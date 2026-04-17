@@ -1,0 +1,38 @@
+name: Auto-Maintain README
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+      
+      - name: Verify and fix encoding
+        run: |
+          if grep -qP '[\x{00E2}\x{00C3}]' README.md 2>/dev/null; then
+            sed -i 's/Ã¢â‚¬"/"/g; s/Ã¢â‚¬Å“/"/g; s/Ã¢â‚¬Â¢/*/g; s/Ã¢â‚¬"/-/g; s/ÃƒÂ³/o/g; s/ÃƒÂ¡/a/g; s/ÃƒÂ©/e/g; s/ÃƒÂ±/n/g' README.md
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add README.md
+            git commit -m "fix: encoding cleanup [skip ci]" --allow-empty || true
+            git push || true
+          fi
+      
+      - name: Update timestamp
+        run: |
+          echo "<!-- auto-maintained: $(date -u +%Y-%m-%dT%H:%M:%SZ) -->" >> README.md
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore: auto-maintain [skip ci]" --allow-empty || true
+          git push || true
